@@ -1,3 +1,3 @@
 # StatProAssignment4
 
-Repository for the Assignment 2 for Extended Statistical Programming.
+Repository for the Assignment 4 for Extended Statistical Programming.
