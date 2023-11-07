@@ -171,3 +171,15 @@ backward <- function(nn, k){
   
   return (updated_network_list)
 }
+
+train<-function(){
+  #Loop over the nsteps desired
+  #First take a new sample of the data( mb points)
+  #Compute the network for each of the points with W and b
+  #Then compute the gradients for all of these points
+  #Average over all of them
+  #Take a step to update W and b
+  #end of loop
+  #Then once the optimum W and b have been found find networks for all of the data points
+  #The final nodes of these will be fed into a classification function which will tell us which class the thing should enter
+}
