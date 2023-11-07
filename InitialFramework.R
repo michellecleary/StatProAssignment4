@@ -16,8 +16,8 @@ netup <- function(d){
   W <- list()
   b <- list()
   for (i in 1:(length(d) - 1)) {
-    W[[i]] <- matrix(runif(d[i + 1] * d[i]), nrow=d[i + 1], ncol = d[i])
-    b[[i]] <- runif(d[i + 1])
+    W[[i]] <- matrix(runif(d[i + 1] * d[i], max = 0.2), nrow=d[i + 1], ncol = d[i])
+    b[[i]] <- runif(d[i + 1], max = 0.2)
   }
 
   result <- list("h"=h,
