@@ -183,3 +183,30 @@ train<-function(){
   #Then once the optimum W and b have been found find networks for all of the data points
   #The final nodes of these will be fed into a classification function which will tell us which class the thing should enter
 }
+
+train <- function(nn,inp,k,eta=.01,mb=10,nstep=10000){
+  
+  # Update initial network
+  updated_nn <- forward(nn, inp)
+  # Ordered class labels 
+  labels <- sort(unique(k))
+  
+  # Iterate over each step
+  for (step in 1:nstep){
+    
+    # Initialise vector to store network list for each class
+    network_lists_per_class <- rep(0, length(labels))
+    
+    # Iterate over each class
+    for (class in labels){
+      # Perform bacl propagation for that class
+      network_list_updated <- backward(updated_nn, class)
+      # Store this network list with derivatives 
+      network_lists_per_class[class] <- network_list_updated
+    }
+    
+    # Compute average of dh, dW, db across classes
+    
+    
+  }
+}
