@@ -27,12 +27,12 @@ netup <- function(d){
 }
 
 forward <- function(nn,inp){
-  #Function description
+  #Computes the rests of the node values for an inputted initial layer 1 values.
   #Inputs:
   #nn: list containing infromation on the nodes and layers of the network as described in netup
   #imp: input values for the first layer of the network
   #Outputs:
-  #nn: updated list of node values on each layer
+  #nn: updated list of matrices of node values on each layer
   h<-nn$h
   W<-nn$W
   b<-nn$b
@@ -43,7 +43,10 @@ forward <- function(nn,inp){
     for (j in 1:length(h[[i+1]])){
   h[[i+1]][j]<-max(0,W[[i]][j, ]%*%h[[i]]+b[[i]][j])
     }}
-  result<-list("nn"=h)
+  result<-list("h"=h,
+               "W"=W,
+               "b"=b)
+  return(result)
 }
 
 
