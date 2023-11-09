@@ -78,7 +78,7 @@ backward <- function(nn, k){
   # Compute number of nodes per layer
   nodes_per_layer <- rep(0, L)
   for (layer in 1:L){
-    nodes_per_layer[layer] <- length(nn$h[[layer]])
+    nodes_per_layer[layer] <- length(h[[layer]])
   }
   
   # Initialise list to store derivatives w.r.t nodes for each layer
@@ -90,19 +90,25 @@ backward <- function(nn, k){
   # Compute the derivative of the loss for k w.r.t nodes in final layer, L
   
   # Sum of exponential of each node value in final layer
-  sum_exp_final_layer <- sum(exp(h[[L]]))
+  #sum_exp_final_layer <- sum(exp(h[[L]]))
+  # 
+  # # Iterate over nodes in final layer
+  # for (j in 1:nodes_per_layer[L]){
+  #   # Check whether the node corresponds to class k and assign appropriate
+  #   # derivative value for that node
+  #   if (j == k){
+  #     dh[[L]][j] <- (exp(h[[L]][j]) / sum_exp_final_layer) - 1
+  #   }
+  #   else if (j != k){
+  #     dh[[L]][j] <- exp(h[[L]][j]) / sum_exp_final_layer
+  #   }
+  # }
   
-  # Iterate over nodes in final layer
-  for (j in 1:nodes_per_layer[L]){
-    # Check whether the node corresponds to class k and assign appropriate
-    # derivative value for that node
-    if (j == k){
-      dh[[L]][j] <- (exp(h[[L]][j]) / sum_exp_final_layer) - 1
-    }
-    else if (j != k){
-      dh[[L]][j] <- exp(h[[L]][j]) / sum_exp_final_layer
-    }
-  }
+  
+  # Derivative for nodes in final layer
+  dh[[L]] <- exp(h[[L]]) / sum(exp(h[[L]]))
+  # Assign appropriate value to node for kth class
+  dh[[L]][k] <- dh[[L]][k] - 1
   
   # Compute the derivatives of the loss with respect to the nodes in all other
   # layers using back-propagation
@@ -133,31 +139,29 @@ backward <- function(nn, k){
     }
     # Compute the derivative of the loss w.r.t the nodes in the current layer,
     # l, as (W^l)^T d^(l + 1)
-    dh[[l]] <- t(W[[l]]) %*% d[[l + 1]]
+    #dh[[l]] <- t(W[[l]]) %*% d[[l + 1]]
   }
   
-  # Initialise list to store derivatives w.r.t offset vectors for layers 1 to 
-  # L - 1
+   
+  # Iterate backwards over each layer, starting at 2nd last layer
+  for (l in (L - 1):1){
+    dh[[l]] <- ifelse(h[[l + 1]] > 0, t(W[[l]]) %*% dh[[l + 1]], 0)
+  }
+  
+  # Initialise lists to store derivatives w.r.t offset vectors and weights 
+  # for layers 1 to L - 1
   db <- list()
-  for (i in 1:(L - 1)){
-    db[[i]] <- rep(0, nodes_per_layer[i + 1])
-  }
-  
-  # Iterate over layers 1 to L-1
-  for (l in 1:(L - 1)){
-    # Assign the derivatives with the values of d^(l + 1) 
-    db[[l]] <- d[[l + 1]]
-  }
-  
-  # Initialise list to store derivatives w.r.t weights for layers 1 to L - 1
   dW <- list()
   for (i in 1:(L - 1)){
+    db[[i]] <- rep(0, nodes_per_layer[i + 1])
     dW[[i]] <- matrix(0, nrow = nrow(W[[i]]), ncol = ncol(W[[i]]))
   }
   
-  # Iterate over layers 1 to L - 1
-  for (l in 1:(L - 1)){
-    # Assign the derivatives with the values of d^(l + 1) (h^l)^T
+  # Iterate over layers L-1 to 1
+  for (l in (L - 1):1){
+    # Assign the offset vectors derivatives with the values of d^(l + 1) 
+    db[[l]] <- d[[l + 1]]
+    # Assign the weights derivatives with the values of d^(l + 1) (h^l)^T
     dW[[l]] <- d[[l + 1]] %*% t(h[[l]])
   }
   
@@ -184,29 +188,101 @@ train<-function(){
   #The final nodes of these will be fed into a classification function which will tell us which class the thing should enter
 }
 
+
+
+
 train <- function(nn,inp,k,eta=.01,mb=10,nstep=10000){
+  
+  # Iterate over each step
+  for (step in 1:nstep){
+    # Randomly sample mb data
+    index <- sample(1:nrow(inp), mb, replace=FALSE)
+    sampled_inp <- inp[index, ]
+    data_class <- k[index]
+    
+    # Update network
+    nn <- forward(nn, sampled_inp)
+    nn <- backward(nn, k)
+    
+    h <- updated_nn$h
+    
+    # Ordered class labels 
+    labels <- sort(unique(k))
+    number_classes <- length(labels)
+    
+    # Update network list
+    nn <- list('h' = h,
+               'W' = W_updated,
+               'b' = b_updated,
+               'dh' = dh_updated,
+               'dW' = dW_updated,
+               'db' = db_updated)
+  }
+}
+
+
+train <- function(nn,inp,k,eta=.01,mb=10,nstep=10000){
+  
+  # Randomly sample mb data
+  index <- sample(1:nrow(inp), mb, replace=FALSE)
+  data <- inp[index, ]
+  data_class <- k[index]
   
   # Update initial network
   updated_nn <- forward(nn, inp)
+  
+  h <- updated_nn$h
+  
   # Ordered class labels 
   labels <- sort(unique(k))
+  number_classes <- length(labels)
   
   # Iterate over each step
   for (step in 1:nstep){
     
     # Initialise vector to store network list for each class
-    network_lists_per_class <- rep(0, length(labels))
+    network_lists_per_class <- rep(0, number_classes)
+    dh_values <- c()
+    dW_values <- c()
+    db_values <- c()
     
     # Iterate over each class
     for (class in labels){
-      # Perform bacl propagation for that class
+      # Perform back propagation for that class
       network_list_updated <- backward(updated_nn, class)
+      # Store derivatives for each class
+      dh_values <- c(dh_values, network_list_updated$dh)
+      dW_values <- c(dW_values, network_list_updated$dW)
+      db_values <- c(db_values, network_list_updated$db)
       # Store this network list with derivatives 
       network_lists_per_class[class] <- network_list_updated
     }
     
+    W <- network_list_updated$W
+    b <- network_list_updated$b
+    
     # Compute average of dh, dW, db across classes
+    dh_sum <- 0
+    dW_sum <- 0
+    db_sum <- 0
+    for (i in 1:number_classes){
+      dh_sum <- dh_sum + dh_values[i]
+      dW_sum <- dW_sum + dW_values[i]
+      db_sum <- db_sum + db_values[i]
+    }
+    dh_updated <- dh_sum / number_classes
+    dW_updated <- dW_sum / number_classes
+    db_updated <- db_sum / number_classes
     
+    W_updated <- W - eta*dW_updated
+    b_updated <- b - eta*db_updated
     
+    # Update network list
+    updated_nn <- list('h' = h,
+                       'W' = W_updated,
+                       'b' = b_updated,
+                       'dh' = dh_updated,
+                       'dW' = dW_updated,
+                       'db' = db_updated)
   }
 }
