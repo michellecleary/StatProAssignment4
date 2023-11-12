@@ -88,24 +88,6 @@ backward <- function(nn, k){
   }
   
   # Compute the derivative of the loss for k w.r.t nodes in final layer, L
-  
-  # Sum of exponential of each node value in final layer
-  #sum_exp_final_layer <- sum(exp(h[[L]]))
-  # 
-  # # Iterate over nodes in final layer
-  # for (j in 1:nodes_per_layer[L]){
-  #   # Check whether the node corresponds to class k and assign appropriate
-  #   # derivative value for that node
-  #   if (j == k){
-  #     dh[[L]][j] <- (exp(h[[L]][j]) / sum_exp_final_layer) - 1
-  #   }
-  #   else if (j != k){
-  #     dh[[L]][j] <- exp(h[[L]][j]) / sum_exp_final_layer
-  #   }
-  # }
-  
-  
-  # Derivative for nodes in final layer
   dh[[L]] <- exp(h[[L]]) / sum(exp(h[[L]]))
   # Assign appropriate value to node for kth class
   dh[[L]][k] <- dh[[L]][k] - 1
@@ -118,31 +100,16 @@ backward <- function(nn, k){
   for (i in 1:L) {
     d[[i]] <- rep(0, nodes_per_layer[i])
   }
+  
+  # Compute values of d for the final layer
   d[[L]] <- ifelse(h[[L]] > 0, dh[[L]], 0)
-  
+ 
   # Iterate backwards over each layer, starting at 2nd last layer
   for (l in (L - 1):1){
-    
-    # Iterate over nodes in next layer
-    for (j in 1:nodes_per_layer[l + 1]){
-      # Check whether the node has a positive value
-      if (h[[l + 1]][j] > 0){
-        # Assign the corresponding element of d with the derivative of the loss
-        # w.r.t this node
-        d[[l + 1]][j] <- dh[[l + 1]][j]
-      }
-      # If node does not have a positive value
-      else if (h[[l + 1]][j] <= 0){
-        # Assign the corresponding element of d with a value of 0
-        d[[l + 1]][j] <- 0
-      }
-    }
-  }
-  
-  
-  # Iterate backwards over each layer, starting at 2nd last layer
-  for (l in (L - 1):1){
+    # Compute derivative of loss with respect to the current layer as 
+    # (W^l)^T d^(l + 1)
     dh[[l]] <-t(W[[l]]) %*% d[[l + 1]]
+    # Compute d^l
     d[[l]] <- ifelse(h[[l]] > 0, dh[[l]], 0)
   }
   
@@ -281,5 +248,32 @@ nn <- netup(c(4, 8, 7, 3))
 # Train the network
 nn <- train(nn, inp = training_inp, k = training_classes_numeric)
 
+#### Predict on test data
+
+# Initialise vector to store prediction values
+predictions <- rep(0, nrow(test_data))
+# Define the initial input values for testing as all columns of the test 
+# data except the class labels
+# Convert to a matrix and unname the columns for use in functions
+test_inp <- unname(as.matrix(test_data[, 1:4]))
+# Define the classes of the input
+# Convert to a vector and unname the column for use in functions
+test_classes <- unname(as.vector(test_data$Species))
+# Convert string class names to numeric values for use in functions
+test_classes_numeric <- as.numeric(factor(test_classes))
+
+# Iterate over each input in the test data
+for (i in 1:nrow(test_inp)){
+  # Use the trained neural network with the test input
+  nn_output <- forward(nn, test_inp[i ,])
+  # Classify the input according to the class predicted as most probable, i.e.
+  # the node with the highest value in the final layer
+  predictions[i] <- which.max(nn_output$h[[length(nn_output$h)]])
+}
 
 
+# Number of test inputs that were misclassified
+number_misclassified <- sum(predictions != test_classes_numeric)
+# Compute the misclassifcation rate as the proportion misclassfied for the test 
+# set
+misclassification_rate <- number_misclassified / length(predictions)
