@@ -118,13 +118,13 @@ backward <- function(nn, k){
   for (i in 1:L) {
     d[[i]] <- rep(0, nodes_per_layer[i])
   }
+  d[[L]] <- ifelse(h[[L]] > 0, dh[[L]], 0)
   
   # Iterate backwards over each layer, starting at 2nd last layer
   for (l in (L - 1):1){
     
     # Iterate over nodes in next layer
     for (j in 1:nodes_per_layer[l + 1]){
-      
       # Check whether the node has a positive value
       if (h[[l + 1]][j] > 0){
         # Assign the corresponding element of d with the derivative of the loss
@@ -137,15 +137,13 @@ backward <- function(nn, k){
         d[[l + 1]][j] <- 0
       }
     }
-    # Compute the derivative of the loss w.r.t the nodes in the current layer,
-    # l, as (W^l)^T d^(l + 1)
-    #dh[[l]] <- t(W[[l]]) %*% d[[l + 1]]
   }
   
-   
+  
   # Iterate backwards over each layer, starting at 2nd last layer
   for (l in (L - 1):1){
-    dh[[l]] <- ifelse(h[[l + 1]] > 0, t(W[[l]]) %*% dh[[l + 1]], 0)
+    dh[[l]] <-t(W[[l]]) %*% d[[l + 1]]
+    d[[l]] <- ifelse(h[[l]] > 0, dh[[l]], 0)
   }
   
   # Initialise lists to store derivatives w.r.t offset vectors and weights 
@@ -176,6 +174,7 @@ backward <- function(nn, k){
   return (updated_network_list)
 }
 
+
 train<-function(){
   #Loop over the nsteps desired
   #First take a new sample of the data( mb points)
@@ -192,9 +191,10 @@ train<-function(){
 
 
 train <- function(nn,inp,k,eta=.01,mb=10,nstep=10000){
-  
-  # Extract h from input
+  # Extract h, W, and b from input
   h <- nn$h
+  W <- nn$W
+  b <- nn$b
   
   # Number of layers in network
   L <- length(h)
@@ -207,49 +207,79 @@ train <- function(nn,inp,k,eta=.01,mb=10,nstep=10000){
   
   # Ordered class labels 
   class_labels <- sort(unique(k))
-  number_classes <- length(labels)
+  number_classes <- length(class_labels)
   
   # Iterate over each step
   for (step in 1:nstep){
-    # Randomly sample mb data
+    
+    # Randomly sample mb rows of data
     index <- sample(1:nrow(inp), mb, replace=FALSE)
     sampled_inp <- inp[index, ]
     sample_class <- k[index]
     
-    # Initialise gradients
+    # Initialise sum of gradients for all mb data points
     all_db <- list()
     all_dW <- list()
-    all_dh <- list()
     
     for (i in 1:(L - 1)){
       all_db[[i]] <- rep(0, nodes_per_layer[i + 1])
       all_dW[[i]] <- matrix(0, nrow = nrow(W[[i]]), ncol = ncol(W[[i]]))
-      all_dh[[i]] <- rep(0, nodes_per_layer[i])
     }
-    all_dh[[L]] <- rep(0, nodes_per_layer[L])
     
-    
-    # Update network
-    nn <- forward(nn, sampled_inp)
-    
-    # Iterate over classes
-    for (class in class_labels){
-      back_prop_gradients <- backward(nn, k = class) 
+    # Iterate over all mb sampled rows
+    for (samp in 1:nrow(sampled_inp)){
       
-      all_dW <- all_dW + back_prop_gradients$dW
-      all_db <- all_db + back_prop_gradients$db
-      all_dh <- all_dh + back_prop_gradients$dh
+      # Update network using forward and then back-propagation
+      nn <- forward(nn, sampled_inp[samp, ])
+      back_prop_gradients <- backward(nn, k = sample_class[samp])
+      
+      # Iterate over layers 1 to L - 1
+      for (l in 1:(L - 1)){
+        # Sum the current gradient values to the overall gradients
+        all_dW[[l]] <- all_dW[[l]] + back_prop_gradients$dW[[l]]
+        all_db[[l]] <- all_db[[l]] + back_prop_gradients$db[[l]]
+      }
     }
     
+    # Iterate over layers 1 to L - 1
     for (i in 1:(L - 1)){
-      nn$db[[i]] <- nn$db[[i]] - eta *(all_db[[i]] / mb)
-      nn$dW[[i]] <- nn$dW[[i]] - eta * (all_dW[[i]] / mb)
-      nn$dh[[i]] <- all_dh[[i]] / mb
+      # Update W and b using the average of the computed gradients
+      nn$b[[i]] <- nn$b[[i]] - eta *(all_db[[i]] / mb)
+      nn$W[[i]] <- nn$W[[i]] - eta * (all_dW[[i]] / mb)
     }
-    nn$dh[[L]] <- all_dh[[L]] / mb
   }
   
+  # Return the trained network
   return (nn)
 }
+
+# Load the data
+data(iris)
+# Create a mask which is sequence starting at 5 and ending at the last row index
+# of the data with an increment of 5
+mask <- seq(5, nrow(iris), 5)
+# Use this mask to select every 5th row of the data, starting from row 5, as the
+# test data
+test_data <- iris[mask, ]
+# The training data is all of the data with the test data removed
+training_data <- iris[-mask, ]
+
+# Define the initial input values for training as all columns of the training 
+# data except the class labels
+# Convert to a matrix and unname the columns for use in functions
+training_inp <- unname(as.matrix(training_data[, 1:4]))
+# Define the classes of the input
+# Convert to a vector and unname the column for use in functions
+training_classes <- unname(as.vector(training_data$Species))
+# Convert string class names to numeric values for use in functions
+training_classes_numeric <- as.numeric(factor(training_classes))
+
+# Set the seed
+set.seed(4)
+# Initialise the network
+nn <- netup(c(4, 8, 7, 3))
+# Train the network
+nn <- train(nn, inp = training_inp, k = training_classes_numeric)
+
 
 
