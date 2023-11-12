@@ -193,96 +193,63 @@ train<-function(){
 
 train <- function(nn,inp,k,eta=.01,mb=10,nstep=10000){
   
+  # Extract h from input
+  h <- nn$h
+  
+  # Number of layers in network
+  L <- length(h)
+  
+  # Compute number of nodes per layer
+  nodes_per_layer <- rep(0, L)
+  for (layer in 1:L){
+    nodes_per_layer[layer] <- length(h[[layer]])
+  }
+  
+  # Ordered class labels 
+  class_labels <- sort(unique(k))
+  number_classes <- length(labels)
+  
   # Iterate over each step
   for (step in 1:nstep){
     # Randomly sample mb data
     index <- sample(1:nrow(inp), mb, replace=FALSE)
     sampled_inp <- inp[index, ]
-    data_class <- k[index]
+    sample_class <- k[index]
+    
+    # Initialise gradients
+    all_db <- list()
+    all_dW <- list()
+    all_dh <- list()
+    
+    for (i in 1:(L - 1)){
+      all_db[[i]] <- rep(0, nodes_per_layer[i + 1])
+      all_dW[[i]] <- matrix(0, nrow = nrow(W[[i]]), ncol = ncol(W[[i]]))
+      all_dh[[i]] <- rep(0, nodes_per_layer[i])
+    }
+    all_dh[[L]] <- rep(0, nodes_per_layer[L])
+    
     
     # Update network
     nn <- forward(nn, sampled_inp)
-    nn <- backward(nn, k)
     
-    h <- updated_nn$h
+    # Iterate over classes
+    for (class in class_labels){
+      back_prop_gradients <- backward(nn, k = class) 
+      
+      all_dW <- all_dW + back_prop_gradients$dW
+      all_db <- all_db + back_prop_gradients$db
+      all_dh <- all_dh + back_prop_gradients$dh
+    }
     
-    # Ordered class labels 
-    labels <- sort(unique(k))
-    number_classes <- length(labels)
-    
-    # Update network list
-    nn <- list('h' = h,
-               'W' = W_updated,
-               'b' = b_updated,
-               'dh' = dh_updated,
-               'dW' = dW_updated,
-               'db' = db_updated)
+    for (i in 1:(L - 1)){
+      nn$db[[i]] <- nn$db[[i]] - eta *(all_db[[i]] / mb)
+      nn$dW[[i]] <- nn$dW[[i]] - eta * (all_dW[[i]] / mb)
+      nn$dh[[i]] <- all_dh[[i]] / mb
+    }
+    nn$dh[[L]] <- all_dh[[L]] / mb
   }
+  
+  return (nn)
 }
 
 
-train <- function(nn,inp,k,eta=.01,mb=10,nstep=10000){
-  
-  # Randomly sample mb data
-  index <- sample(1:nrow(inp), mb, replace=FALSE)
-  data <- inp[index, ]
-  data_class <- k[index]
-  
-  # Update initial network
-  updated_nn <- forward(nn, inp)
-  
-  h <- updated_nn$h
-  
-  # Ordered class labels 
-  labels <- sort(unique(k))
-  number_classes <- length(labels)
-  
-  # Iterate over each step
-  for (step in 1:nstep){
-    
-    # Initialise vector to store network list for each class
-    network_lists_per_class <- rep(0, number_classes)
-    dh_values <- c()
-    dW_values <- c()
-    db_values <- c()
-    
-    # Iterate over each class
-    for (class in labels){
-      # Perform back propagation for that class
-      network_list_updated <- backward(updated_nn, class)
-      # Store derivatives for each class
-      dh_values <- c(dh_values, network_list_updated$dh)
-      dW_values <- c(dW_values, network_list_updated$dW)
-      db_values <- c(db_values, network_list_updated$db)
-      # Store this network list with derivatives 
-      network_lists_per_class[class] <- network_list_updated
-    }
-    
-    W <- network_list_updated$W
-    b <- network_list_updated$b
-    
-    # Compute average of dh, dW, db across classes
-    dh_sum <- 0
-    dW_sum <- 0
-    db_sum <- 0
-    for (i in 1:number_classes){
-      dh_sum <- dh_sum + dh_values[i]
-      dW_sum <- dW_sum + dW_values[i]
-      db_sum <- db_sum + db_values[i]
-    }
-    dh_updated <- dh_sum / number_classes
-    dW_updated <- dW_sum / number_classes
-    db_updated <- db_sum / number_classes
-    
-    W_updated <- W - eta*dW_updated
-    b_updated <- b - eta*db_updated
-    
-    # Update network list
-    updated_nn <- list('h' = h,
-                       'W' = W_updated,
-                       'b' = b_updated,
-                       'dh' = dh_updated,
-                       'dW' = dW_updated,
-                       'db' = db_updated)
-  }
-}
