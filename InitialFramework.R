@@ -50,9 +50,11 @@ forward <- function(nn, inp){
   # the first layer nodes.
   #
   # Inputs:
-  # nn: network list as returned by netup(), containing a list of nodes for each
-  #     layer (h), a list of weight matrices (W), and a list of offset vectors 
-  #     (b)
+  # nn: network list as returned by netup() containing the following elements:
+  #     h: list of nodes in each layer of the network
+  #     W: list of corresponding weight matrices to link each layer to the next 
+  #        one 
+  #     b: List of offset vectors linking each layer to the next one
   # inp: vector of input values for the first layer of the network
   #
   # Outputs:
@@ -94,19 +96,21 @@ backward <- function(nn, k){
   # weights and offsets corresponding to output class k for network nn.
   #
   # Inputs:
-  # nn: network list as output from forward(), containing a list of nodes for 
-  #     each layer (h), a list of weight matrices (W), and a list of offset
-  #     vectors (b)
+  # nn: network list as output from forward() containing the following elements:
+  #     h: list of nodes in each layer of the network
+  #     W: list of corresponding weight matrices to link each layer to the next 
+  #        one 
+  #     b: List of offset vectors linking each layer to the next one
   # k: output class
   #
   # Outputs:
-  # updated_net: updated network list with the following elements:
-  #              h: a list of nodes for each layer
-  #              W: a list of weight matrices
-  #              b: a list of offset vectors
-  #              dh: derivatives with respect to the nodes
-  #              dW: derivatives with respect to the weights
-  #              db: derivatives with respect to the offsets
+  # updated_nn: updated network list containing the following elements:
+  #             h: a list of nodes for each layer
+  #             W: a list of weight matrices
+  #             b: a list of offset vectors
+  #             dh: derivatives with respect to the nodes
+  #             dW: derivatives with respect to the weights
+  #             db: derivatives with respect to the offsets
   
   # Extract h, W and b from input
   h <- nn$h
@@ -172,14 +176,14 @@ backward <- function(nn, k){
   }
   
   # Update network list
-  updated_network_list <- list('h' = h,
-                               'W' = W,
-                               'b' = b,
-                               'dh' = dh,
-                               'dW' = dW,
-                               'db' = db)
+  updated_nn <- list('h' = h,
+                     'W' = W,
+                     'b' = b,
+                     'dh' = dh,
+                     'dW' = dW,
+                     'db' = db)
   
-  return (updated_network_list)
+  return (updated_nn)
 }
 
 train <- function(nn,inp,k,eta=.01,mb=10,nstep=10000){
