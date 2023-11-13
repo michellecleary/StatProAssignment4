@@ -1,61 +1,102 @@
 #inital framework
-
+Rprof()
 netup <- function(d){
-  # Function to represent the network given by nodes divded by layers.
+  # Function to create a list representing the neural network with d[l] nodes 
+  # in layer l.
+  #
   # Inputs:
-  # d: vector of nodes in each level of the network
+  # d: vector giving the number of nodes in each layer of the network
+  #
   # Outputs:
-  # h: list of nodes in each layer of the network
-  # W: list of corresponding weight matrices to link each layer to the one above it
-  # b: List of offset vectors linking each layer to the one above it
-  h <- list()
-  for (i in 1:length(d)) {
-    h[[i]] <- rep(1, d[i])
-  }
+  # nn: network list containing the following elements:
+  #     h: list of nodes in each layer of the network
+  #     W: list of corresponding weight matrices to link each layer to the next 
+  #        one 
+  #     b: List of offset vectors linking each layer to the next one
   
+  # Initialise empty lists to store h, W, and b
+  h <- list()
   W <- list()
   b <- list()
-  for (i in 1:(length(d) - 1)) {
-    W[[i]] <- matrix(runif(d[i + 1] * d[i], max = 0.2), nrow=d[i + 1], ncol = d[i])
-    b[[i]] <- runif(d[i + 1], max = 0.2)
+  
+  # Define the total number of layers, L
+  L <- length(d)
+  
+  # Iterate over each layer
+  for (l in 1:L) {
+    # Create the nodes in layer h[[l]], initialising the elements with 
+    h[[l]] <- rep(1, d[l])
+  }
+  
+  # Iterate over layers 1 to L - 1
+  for (l in 1:(L - 1)) {
+    # Create the weight matrix W[[l]] and offset vector b[[l]], both linking 
+    # layer l to layer l + 1, initialising the elements with U(0, 0.2) random 
+    # deviates
+    W[[l]] <- matrix(runif(d[l + 1] * d[l], max = 0.2), nrow=d[l + 1], 
+                     ncol = d[l])
+    b[[l]] <- runif(d[l + 1], max = 0.2)
   }
 
-  result <- list("h"=h,
-                "W"=W,
-                "b"=b)  
-  return(result)
+  nn <- list("h" = h,
+             "W" = W,
+             "b" = b)  
+  return (nn)
 }
 
-forward <- function(nn,inp){
-  #Computes the rests of the node values for an inputted initial layer 1 values.
-  #Inputs:
-  #nn: list containing infromation on the nodes and layers of the network as described in netup
-  #imp: input values for the first layer of the network
-  #Outputs:
-  #nn: updated list of matrices of node values on each layer
-  h<-nn$h
-  W<-nn$W
-  b<-nn$b
+forward <- function(nn, inp){
+  # Function to update the network list nn by computing the remaining node 
+  # values implied by inp, the given input data to be used as the values for 
+  # the first layer nodes.
+  #
+  # Inputs:
+  # nn: network list as returned by netup(), containing a list of nodes for each
+  #     layer (h), a list of weight matrices (W), and a list of offset vectors 
+  #     (b)
+  # inp: vector of input values for the first layer of the network
+  #
+  # Outputs:
+  # updated_nn: updated network list, containing the following elements: 
+  #             h: list of updated node values in each layer of the network
+  #             W: list of corresponding weight matrices to link each layer to 
+  #                the next one (as in input nn)
+  #             b: List of offset vectors linking each layer to the next one (as
+  #                in input nn)
   
-  h[[1]]<-inp
+  # Extract h, W, and W from the input network list
+  h <- nn$h
+  W <- nn$W
+  b <- nn$b
   
-  for (i in 1:(length(h)-1)){
-    for (j in 1:length(h[[i+1]])){
-  h[[i+1]][j]<-max(0,W[[i]][j, ]%*%h[[i]]+b[[i]][j])
-    }}
-  result<-list("h"=h,
-               "W"=W,
-               "b"=b)
-  return(result)
+  # Set the values of the first layer nodes to be the values of the input data
+  h[[1]] <- inp
+  
+  # Define the total number of layers, L
+  L <- length(h)
+  
+  # Iterate over layers 1 to L - 1
+  for (i in 1:(L - 1)) {
+    # Compute the node values of the next layer
+    h[[i+1]] <- pmax(0, W[[i]] %*% h[[i]] + b[[i]])
+  }
+  
+  # Update the network list
+  updated_nn <- list("h" = h,
+                     "W" = W,
+                     "b" = b)
+  
+  return (updated_nn)
 }
 
 
 backward <- function(nn, k){
-  # Function to compute the derivatives of the loss corresponding to output 
-  # class k for network nn.
+  # Function to compute the derivatives of the loss with respect to the nodes,
+  # weights and offsets corresponding to output class k for network nn.
   #
   # Inputs:
-  # nn: network list as output from forward()
+  # nn: network list as output from forward(), containing a list of nodes for 
+  #     each layer (h), a list of weight matrices (W), and a list of offset
+  #     vectors (b)
   # k: output class
   #
   # Outputs:
@@ -204,6 +245,8 @@ train <- function(nn,inp,k,eta=.01,mb=10,nstep=10000){
   return (nn)
 }
 
+
+Rprof()
 # Load the data
 data(iris)
 # Create a mask which is sequence starting at 5 and ending at the last row index
@@ -261,3 +304,5 @@ number_misclassified <- sum(predictions != test_classes_numeric)
 # Compute the misclassifcation rate as the proportion misclassfied for the test 
 # set
 misclassification_rate <- number_misclassified / length(predictions)
+Rprof(NULL)
+summaryRprof()
