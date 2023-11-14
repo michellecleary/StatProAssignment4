@@ -1,8 +1,10 @@
 # Michelle Cleary (s1979093), Murad Magdiyev (s2533467), Liz Howell (s1523887)
+# https://github.com/michellecleary/StatProAssignment4.git
 # Contributions:
-# Michelle - 
-# Murad - 
-# Liz - 
+# Roughly equal contributions - about 1/3 each.
+# Michelle - backward(), train(), prediction for iris data.
+# Murad - netup() function, debugging and optimising forward().
+# Liz - forward() function, debugging and optimising backward() and train().
 
 
 # The following code will first define functions to set up a simple neural 
@@ -392,7 +394,7 @@ test_classes_numeric <- as.numeric(factor(test_classes))
 ## Training the network
 
 # Set the seed
-set.seed(4)
+set.seed(13)
 # Initialise the network
 nn <- netup(c(4, 8, 7, 3))
 # Train the network
