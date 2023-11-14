@@ -177,9 +177,12 @@ backward <- function(nn, k){
   # Number of layers in network
   L <- length(h)
   
-  #Computing the number of nodes in that layer
-  nodes_per_layer <- lengths(h)
-  shifted_nodes_per_layer<-tail(nodes_per_layer,-1)
+  # Initiliase list to store number of nodes per layer
+  nodes_per_layer <- list()
+  # Iterate over each layer, computing the number of nodes in that layer
+  for (l in 1:L){
+    nodes_per_layer[l] <- length(h[[l]])
+  }
   
   # Initialise vector d and the list dh to store derivatives w.r.t nodes for 
   # each layer
@@ -189,13 +192,12 @@ backward <- function(nn, k){
   }
   
   # Compute the derivative of the loss for k with respect to the nodes in final 
-  # layer, L, as exp(h_j^L) / sum_{q} exp(h_q^L)
+  # layer, L
   dh[[L]] <- exp(h[[L]]) / sum(exp(h[[L]]))
-  # Assign the node for class k the value exp(h_j^L) / sum_{q} exp(h_q^L) - 1
+  # Assign appropriate value to node for class k
   dh[[L]][k] <- dh[[L]][k] - 1
   
-  # Compute values of d for the final layer, where d_j^(L) = dL_i/dh_j^(L) if
-  # h_j^(L) > 0, and d_j^(L) = 0 if h_j^(L) <= 0
+  # Compute values of d for the final layer
   d[[L]] <- ifelse(h[[L]] > 0, dh[[L]], 0)
   
   # Compute the derivatives of the loss with respect to the nodes in all other
@@ -206,8 +208,7 @@ backward <- function(nn, k){
     # Compute derivative of loss with respect to the current layer as 
     # (W^l)^T d^(l + 1)
     dh[[l]] <- t(W[[l]]) %*% d[[l + 1]]
-    # Compute d^l, where d_j^(l) = dL_i/dh_j^(l) if h_j^(l) > 0, and 
-    # d_j^(l) = 0 if h_j^(l) <= 0
+    # Compute d^l
     d[[l]] <- ifelse(h[[l]] > 0, dh[[l]], 0)
   }
   
@@ -300,8 +301,10 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
   L <- length(h)
   
   # Compute number of nodes per layer
-  nodes_per_layer <- lengths(h)
-  shifted_nodes_per_layer<-tail(nodes_per_layer,-1)
+  nodes_per_layer <- rep(0, L)
+  for (l in 1:L){
+    nodes_per_layer[l] <- length(h[[l]])
+  }
   
   # Ordered class labels 
   class_labels <- sort(unique(k))
@@ -316,8 +319,13 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
     sample_class <- k[index]
     
     # Initialise sum of gradients for all mb data points
-    all_db <- mapply(rep,0,nodes_per_layer[-1])
-    all_dW<-mapply(matrix,0,shifted_nodes_per_layer,head(nodes_per_layer,-1))
+    all_db <- list()
+    all_dW <- list()
+    
+    for (l in 1:(L - 1)){
+      all_db[[l]] <- rep(0, nodes_per_layer[l + 1])
+      all_dW[[l]] <- matrix(0, nrow = nrow(W[[l]]), ncol = ncol(W[[l]]))
+    }
     
     # Iterate over all mb sampled rows
     for (samp in 1:nrow(sampled_inp)){
@@ -326,13 +334,20 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
       nn <- forward(nn, sampled_inp[samp, ])
       back_prop_gradients <- backward(nn, k = sample_class[samp])
       
-      # Sum the current gradient values to the overall gradients
-      all_dW <- Map("+",all_dW, back_prop_gradients$dW)
-      all_db <- Map("+",all_db, back_prop_gradients$db)
+      # Iterate over layers 1 to L - 1
+      for (l in 1:(L - 1)){
+        # Sum the current gradient values to the overall gradients
+        all_dW[[l]] <- all_dW[[l]] + back_prop_gradients$dW[[l]]
+        all_db[[l]] <- all_db[[l]] + back_prop_gradients$db[[l]]
+      }
     }
-    # Update W and b using the average of the computed gradients
-    nn$b <- mapply("+",nn$b,lapply(all_db,"*",(-eta/mb)))
-    nn$W <- mapply("+",nn$W,lapply(all_dW,"*",(-eta/mb)))
+    
+    # Iterate over layers 1 to L - 1
+    for (l in 1:(L - 1)){
+      # Update W and b using the average of the computed gradients
+      nn$b[[l]] <- nn$b[[l]] - eta *(all_db[[l]] / mb)
+      nn$W[[l]] <- nn$W[[l]] - eta * (all_dW[[l]] / mb)
+    }
   }
   
   # Return the trained network
