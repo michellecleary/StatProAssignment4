@@ -131,12 +131,10 @@ backward <- function(nn, k){
   # Number of layers in network
   L <- length(h)
   
-  # Initiliase list to store number of nodes per layer
+  # Initialise list to store number of nodes per layer
   nodes_per_layer <- list()
-  # Iterate over each layer, computing the number of nodes in that layer
-  for (l in 1:L){
-    nodes_per_layer[l] <- length(h[[l]])
-  }
+  #Computing the number of nodes in that layer
+    nodes_per_layer <- lengths(h)
   
   # Initialise vector d and the list dh to store derivatives w.r.t nodes for 
   # each layer
@@ -228,10 +226,8 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
   L <- length(h)
   
   # Compute number of nodes per layer
-  nodes_per_layer <- rep(0, L)
-  for (l in 1:L){
-    nodes_per_layer[l] <- length(h[[l]])
-  }
+  
+  nodes_per_layer <- lengths(h)
   
   # Ordered class labels 
   class_labels <- sort(unique(k))
@@ -261,12 +257,9 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
       nn <- forward(nn, sampled_inp[samp, ])
       back_prop_gradients <- backward(nn, k = sample_class[samp])
       
-      # Iterate over layers 1 to L - 1
-      for (l in 1:(L - 1)){
         # Sum the current gradient values to the overall gradients
-        all_dW[[l]] <- all_dW[[l]] + back_prop_gradients$dW[[l]]
-        all_db[[l]] <- all_db[[l]] + back_prop_gradients$db[[l]]
-      }
+        all_dW <- Map("+",all_dW, back_prop_gradients$dW)
+        all_db <- Map("+",all_db, back_prop_gradients$db)
     }
     
     # Iterate over layers 1 to L - 1
