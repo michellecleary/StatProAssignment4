@@ -177,10 +177,9 @@ backward <- function(nn, k){
   # Number of layers in network
   L <- length(h)
   
-  # Initialise list to store number of nodes per layer
-  nodes_per_layer <- list()
   #Computing the number of nodes in that layer
   nodes_per_layer <- lengths(h)
+  shifted_nodes_per_layer<-tail(nodes_per_layer,-1)
   
   # Initialise vector d and the list dh to store derivatives w.r.t nodes for 
   # each layer
@@ -302,6 +301,7 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
   
   # Compute number of nodes per layer
   nodes_per_layer <- lengths(h)
+  shifted_nodes_per_layer<-tail(nodes_per_layer,-1)
   
   # Ordered class labels 
   class_labels <- sort(unique(k))
