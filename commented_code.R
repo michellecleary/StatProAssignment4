@@ -316,13 +316,8 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
     sample_class <- k[index]
     
     # Initialise sum of gradients for all mb data points
-    all_db <- list()
-    all_dW <- list()
-    
-    for (l in 1:(L - 1)){
-      all_db[[l]] <- rep(0, nodes_per_layer[l + 1])
-      all_dW[[l]] <- matrix(0, nrow = nrow(W[[l]]), ncol = ncol(W[[l]]))
-    }
+    all_db <- mapply(rep,0,nodes_per_layer[-1])
+    all_dW<-mapply(matrix,0,shifted_nodes_per_layer,head(nodes_per_layer,-1))
     
     # Iterate over all mb sampled rows
     for (samp in 1:nrow(sampled_inp)){
@@ -335,13 +330,9 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
       all_dW <- Map("+",all_dW, back_prop_gradients$dW)
       all_db <- Map("+",all_db, back_prop_gradients$db)
     }
-    
-    # Iterate over layers 1 to L - 1
-    for (l in 1:(L - 1)){
-      # Update W and b using the average of the computed gradients
-      nn$b[[l]] <- nn$b[[l]] - eta *(all_db[[l]] / mb)
-      nn$W[[l]] <- nn$W[[l]] - eta * (all_dW[[l]] / mb)
-    }
+    # Update W and b using the average of the computed gradients
+    nn$b <- mapply("+",nn$b,lapply(all_db,"*",(-eta/mb)))
+    nn$W <- mapply("+",nn$W,lapply(all_dW,"*",(-eta/mb)))
   }
   
   # Return the trained network
