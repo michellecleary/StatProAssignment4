@@ -5,11 +5,19 @@
 # Liz - 
 
 
-# The following code will 
+# The following code will first define functions to set up a simple neural 
+# network for classification, and to train it using stochastic gradient descent. 
+# It will then use a training subset of the iris dataset to train a network to 
+# classify irises to species based on the 4 characteristics given. The 
+# performance of the network will then be evaluated using the misclassification 
+# rate (i.e. the proportion misclassified) for the test subset pf the iris 
+# dataset.
 
 
 #### Function definitions
 
+
+# A simple, fully-connected L-layer neural network of 
 netup <- function(d){
   # Function to create a list representing the neural network with d[l] nodes 
   # in layer l.
@@ -54,11 +62,20 @@ netup <- function(d){
   return (nn)
 }
 
+# Each node value is determined by linearly combining the values from the nodes 
+# in the previous layer and non-linearly transforming the result. The following
+# function will compute node values using the ReLU transform, 
+# ReLU(z) = max(0, z). Therefore, we have that node j in layer l + 1 is given 
+# by:
+# h_j^(l + 1) = max(0, W_j^l h^l + b^l),
+# where W_j^l is the jth row of weight parameter matrix W^l which links layer l 
+# to layer l + 1, h^l is the vector of node values for layer l, and b^l is the
+# vector of offset parameters which links layer l to layer l + 1.
 
 forward <- function(nn, inp){
-  # Function to update the network list nn by computing the remaining node 
-  # values implied by inp, the given input data to be used as the values for 
-  # the first layer nodes.
+  # Function to update the network list nn by using the ReLU transform to 
+  # compute the remaining node values implied by inp, the given input data to 
+  # be used as the values for the first layer nodes.
   #
   # Inputs:
   # nn: network list as returned by netup() containing the following elements:
@@ -89,7 +106,7 @@ forward <- function(nn, inp){
   
   # Iterate over layers 1 to L - 1
   for (i in 1:(L - 1)) {
-    # Compute the node values of the next layer
+    # Compute the node values of the next layer using the ReLU transform
     h[[i+1]] <- pmax(0, W[[i]] %*% h[[i]] + b[[i]])
   }
   
@@ -101,6 +118,35 @@ forward <- function(nn, inp){
   return (updated_nn)
 }
 
+
+# For a classification task in which numeric variables are used to predict which 
+# class an observation belongs to, the input layer would have a node for each 
+# numeric variable, and the output layer, layer L, would have a node for each
+# possible class. Then, we define the probability that the output variable is 
+# in class k to be:
+# p_k = exp(h_k^L) / sum_{j} exp(h_j^L).
+# Then, using the negative log-likelihood of a multinomial distribution as the 
+# loss function, if we have n training data pairs with input, x_i, and output
+# class, k_i, the loss is:
+# L = -sum_{i = 1,..,n} log(p_{k_i}) / n.
+# Stochastic gradient descent involves minimising L by repeatedly finding 
+# the gradient of the loss function, L, with respect to the parameters, and
+# adjusting the parameters by taking a step in the direction of the negative 
+# gradient. The following function will compute the gradient of the loss 
+# function with respect to the nodes (h), weights (W), and offsets (b) for a 
+# given output class. 
+#
+# The derivative of the loss for k_i with respect to the nodes in the final
+# layer is given by:
+# dL_i/dh_j^L = exp(h_j^L) / sum_{q} exp(h_q^L) - 1 when j = k_i, and
+# dL_i/dh_j^L = exp(h_j^L) / sum_{q} exp(h_q^L) otherwise.
+# The derivatives of L_i with respect to all the other h_j^l can be computed 
+# using back-propagation as:
+# dL_i/dh^l = (W^l)^T d^(l + 1), where d_j^(l + 1) = dL_i/dh_j^(l + 1) if
+# h_j^(l + 1) > 0, and d_j^(l + 1) = 0 if h_j^(l + 1) <= 0.
+# The derivatives of L_i with respect to the weights and the offsets are then
+# given by:
+# dL_i/dW^l = d^(l + 1) (h^l)^T; dL_i/db^l = d^(l + 1).
 
 backward <- function(nn, k){
   # Function to compute the derivatives of the loss with respect to the nodes,
@@ -144,12 +190,13 @@ backward <- function(nn, k){
   }
   
   # Compute the derivative of the loss for k with respect to the nodes in final 
-  # layer, L
+  # layer, L, as exp(h_j^L) / sum_{q} exp(h_q^L)
   dh[[L]] <- exp(h[[L]]) / sum(exp(h[[L]]))
-  # Assign appropriate value to node for class k
+  # Assign the node for class k the value exp(h_j^L) / sum_{q} exp(h_q^L) - 1
   dh[[L]][k] <- dh[[L]][k] - 1
   
-  # Compute values of d for the final layer
+  # Compute values of d for the final layer, where d_j^(L) = dL_i/dh_j^(L) if
+  # h_j^(L) > 0, and d_j^(L) = 0 if h_j^(L) <= 0
   d[[L]] <- ifelse(h[[L]] > 0, dh[[L]], 0)
  
   # Compute the derivatives of the loss with respect to the nodes in all other
@@ -160,7 +207,8 @@ backward <- function(nn, k){
     # Compute derivative of loss with respect to the current layer as 
     # (W^l)^T d^(l + 1)
     dh[[l]] <- t(W[[l]]) %*% d[[l + 1]]
-    # Compute d^l
+    # Compute d^l, where d_j^(l) = dL_i/dh_j^(l) if h_j^(l) > 0, and 
+    # d_j^(l) = 0 if h_j^(l) <= 0
     d[[l]] <- ifelse(h[[l]] > 0, dh[[l]], 0)
   }
   
@@ -192,6 +240,33 @@ backward <- function(nn, k){
   return (updated_nn)
 }
 
+
+# The idea of stochastic gradient descent is to minimise the loss by 
+# repeatedly finding the gradient of the loss function with respect to the 
+# parameters for small randomly chosen subsets of the training data, and to 
+# adjust the parameters by taking a step in the direction of the negative 
+# gradient. The gradient of L is just the average of the gradients of
+# L_i = −log(p_{k_i}) for each element of the training data, so we can compute
+# the gradient one data point at a time.
+# For a single datum i in this small subset, consisting of input data 
+# x_i with class k_i, this is done as follows:
+# 1. Set h^1 = x_i and compute the remaining node values h_j^l corresponding to 
+# this using the ReLU transform, as in forward().
+# 2. Compute the derivative of the loss for k_i with respect to the nodes in the 
+# final layer, h_j^L, as in backward().
+# 3. Compute the derivatives of the loss with respect to all the other h_j^l
+# using back-propagation, and the derivatives with respect to the weights and 
+# the offsets, as in backward().
+#
+# Repeat these steps for each datum i in the subset of the training data, and
+# compute the derivative of the loss based on this subset by averaging the 
+# derivatives for each i in the set. The parameter updates are then of the form:
+# W^l <- W^l - eta (dL/dW^l)
+# b^l <- b^l - eta (dL/db^l)
+# where eta is a step length.
+#
+# The following function repeats this entire process many times to train a 
+# network.
 
 train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
   # Function to train the network, nn, given input data inp and corresponding 
@@ -226,7 +301,6 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
   L <- length(h)
   
   # Compute number of nodes per layer
-  
   nodes_per_layer <- lengths(h)
   
   # Ordered class labels 
@@ -281,7 +355,7 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
 # The functions defined above are now used to train a 4-8-7-3 network to 
 # classify irises to species based on the 4 characteristics given in the iris 
 # dataset
-
+Rprof()
 # Load the data
 data(iris)
 
@@ -338,4 +412,5 @@ number_misclassified <- sum(predictions != test_classes_numeric)
 # Compute the misclassifcation rate as the proportion misclassfied for the test 
 # set
 misclassification_rate <- number_misclassified / length(predictions)
-
+Rprof(NULL)
+summaryRprof()
