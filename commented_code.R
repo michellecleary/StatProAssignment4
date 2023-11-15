@@ -371,7 +371,7 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
 # The functions defined above are now used to train a 4-8-7-3 network to 
 # classify irises to species based on the 4 characteristics given in the iris 
 # dataset
-Rprof()
+
 # Load the data
 data(iris)
 
@@ -438,5 +438,3 @@ cat('Misclassification rate of the network:', round(misclassification_rate, 2))
 # well to the test data and has accurate predictions. Training the network using 
 # varying seeds resulted in misclassification rates between 0-0.06, further
 # supporting that the network performs well and generalises to the test data.
-Rprof(NULL)
-summaryRprof()
