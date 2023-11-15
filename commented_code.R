@@ -70,6 +70,7 @@ netup <- function(d){
   return (nn)
 }
 
+
 # Each node value is determined by linearly combining the values from the nodes 
 # in the previous layer and non-linearly transforming the result. The following
 # function will compute node values using the ReLU transform, 
@@ -79,6 +80,7 @@ netup <- function(d){
 # where W_j^l is the jth row of weight parameter matrix W^l which links layer l 
 # to layer l + 1, h^l is the vector of node values for layer l, and b^l is the
 # vector of offset parameters which links layer l to layer l + 1.
+
 
 forward <- function(nn, inp){
   # Function to update the network list nn by using the ReLU transform to 
@@ -166,6 +168,7 @@ forward <- function(nn, inp){
 # given by:
 # dL_i/dW^l = d^(l + 1) (h^l)^T; dL_i/db^l = d^(l + 1).
 
+
 backward <- function(nn, k){
   # Function to compute the derivatives of the loss with respect to the nodes,
   # weights and offsets corresponding to output class k for network nn.
@@ -200,12 +203,9 @@ backward <- function(nn, k){
   L <- nn$L
   nodes_per_layer <- nn$nodes_per_layer
   
-  # Initialise vector d and the list dh to store derivatives w.r.t nodes for 
-  # each layer
+  # Initialise vector d and the list dh to store derivatives with respect to 
+  # the nodes
   dh <- d <- list()
-  for (l in 1:L) {
-    dh[[l]] <- d[[l]] <- rep(0, nodes_per_layer[l])
-  }
   
   # Compute the derivative of the loss for k with respect to the nodes in final 
   # layer, L
@@ -219,7 +219,7 @@ backward <- function(nn, k){
   # Compute the derivatives of the loss with respect to the nodes in all other
   # layers using back-propagation
   
-  # Iterate backwards over each layer, starting at 2nd last layer
+  # Iterate backwards over each layer, starting at 2nd last layer, L - 1
   for (l in (L - 1):1){
     # Compute derivative of loss with respect to the current layer as 
     # (W^l)^T d^(l + 1)
@@ -229,15 +229,11 @@ backward <- function(nn, k){
   }
   
   # Initialise lists to store derivatives with respect to offset vectors and 
-  # weights for layers 1 to L - 1
+  # weights 
   db <- list()
   dW <- list()
-  for (l in 1:(L - 1)){
-    db[[l]] <- rep(0, nodes_per_layer[l + 1])
-    dW[[l]] <- matrix(0, nrow = nrow(W[[l]]), ncol = ncol(W[[l]]))
-  }
   
-  # Iterate over layers L-1 to 1
+  # Iterate over layers L - 1 to 1
   for (l in (L - 1):1){
     # Assign the offset vectors derivatives with the values of d^(l + 1) 
     db[[l]] <- d[[l + 1]]
@@ -286,6 +282,7 @@ backward <- function(nn, k){
 # The following function repeats this entire process many times to train a 
 # network.
 
+
 train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
   # Function to train the network, nn, given input data inp and corresponding 
   # class labels in k; using a step size of eta, randomly sampling mb data to 
@@ -331,10 +328,11 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
     sampled_inp <- inp[index, ]
     sample_class <- k[index]
     
-    # Initialise sum of gradients for all mb data points
+    # Initialise lists to store sum of gradients for all mb data points
     all_db <- list()
     all_dW <- list()
     
+    # Initialise sum of gradients as 0 for all matrices and offset vectors
     for (l in 1:(L - 1)){
       all_db[[l]] <- rep(0, nodes_per_layer[l + 1])
       all_dW[[l]] <- matrix(0, nrow = nrow(W[[l]]), ncol = ncol(W[[l]]))
@@ -397,8 +395,13 @@ test_inp <- as.matrix(test_data[, 1:4])
 training_classes <- as.vector(training_data$Species)
 test_classes <- as.vector(test_data$Species)
 # Convert string class names to numeric values for use in functions
-training_classes_numeric <- factor(training_classes, levels = c('setosa', 'versicolor', 'virginica'), labels = c(1, 2, 3))
-test_classes_numeric <- factor(test_classes, levels = c('setosa', 'versicolor', 'virginica'), labels = c(1, 2, 3))
+training_classes_numeric <- factor(training_classes, 
+                                   levels = c('setosa', 'versicolor', 
+                                              'virginica'), 
+                                   labels = c(1, 2, 3))
+test_classes_numeric <- factor(test_classes, 
+                               levels = c('setosa', 'versicolor', 'virginica'), 
+                               labels = c(1, 2, 3))
 
 ## Training the network
 
