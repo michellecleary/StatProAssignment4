@@ -365,6 +365,52 @@ train <- function(nn, inp, k, eta = .01, mb = 10, nstep = 10000){
 }
 
 
+# The value of loss function, L, for a network nn is computed as
+# L = -sum_{i=1,..,n} log(p_{k_i}) / n,
+# where p_{k_i} is the probability that the output variable for x_i is in 
+# class k_i, with
+# p_k = exp(h_k^L) / sum_{j} exp(h_j^L).
+
+loss <- function(nn, inp, k){
+  # Function to compute value of loss function, L, for a network nn.
+  #
+  # Inputs:
+  # nn: network list containing the following elements:
+  #     h: list of node values in each layer of the network
+  #     W: list of corresponding weight matrices to link each layer to the next 
+  #        one 
+  #     b: list of offset vectors linking each layer to the next one
+  #     L: total number of layers in network
+  #     nodes_per_layer: vector where the lth element is the number of nodes in
+  #                      layer l of the network
+  # inp: matrix of input values for the first layer of the network
+  # k: vector of output class labels for each row of the input data (inp)
+  #
+  # Outputs:
+  # loss: value of the loss function for the given network and data
+  
+  # Initialise vectors to store probabilities of each input datum being in its
+  # true class
+  pk <- c()
+  
+  # Iterate over each row of input data
+  for (i in 1:nrow(inp)){
+    # Compute node values for data x_i with class k_i
+    updated_nn <- forward(nn, inp[i,])
+    h <- updated_nn$h
+    L <- updated_nn$L
+    # Compute the probability that the output variable is in class k_i
+    pki <- exp(h[[L]][k[i]]) / sum(exp(h[[L]]))
+    pk <- c(pk, pki)
+  }
+  
+  # Compute the loss 
+  loss <- round(- sum(log(pk)) / length(pk), 4)
+  return (loss)
+}
+
+
+
 
 #### Training and testing the performance of a network 
 
@@ -409,8 +455,21 @@ test_classes_numeric <- factor(test_classes,
 set.seed(13)
 # Initialise the network
 nn <- netup(c(4, 8, 7, 3))
+
+# Compute pre-training loss using training data
+pre_training_loss <- loss(nn, training_inp, training_classes_numeric)
+cat('Pre-training loss:', pre_training_loss)
+
+# Set the seed
+set.seed(13)
+# Initialise the network again
+nn <- netup(c(4, 8, 7, 3))
 # Train the network
 nn <- train(nn, inp = training_inp, k = training_classes_numeric)
+
+# Compute post-training loss using training data
+post_training_loss <- loss(nn, training_inp, training_classes_numeric)
+cat('Post-training loss:', post_training_loss)
 
 ## Predicting the species for the test data using the trained network
 
